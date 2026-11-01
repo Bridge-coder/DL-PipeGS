@@ -143,7 +143,7 @@ python -I scripts/pipeline.py sewer_pipe2 D:/data/sewer/Pipe2.avi --camera-json 
 | DensifyPointCloud 崩溃（0xC0000409） | 稀疏模型里有落在相机背后的点 | 第 10 步的 `clean_sfm.py` 已处理；仍崩溃看 `LOGS/<工作目录>/step11_*.log` |
 | 稠密重建中断 | — | 删掉 `WORK/mvs/depth*.dmap`，从步骤 11 重跑（`--frontend-steps 11 12 13`） |
 | `WSL distro pipe3d did not start`（HCS 0x800705aa） | 可用内存不够（`.wslconfig` 要 8 GB） | 关掉占内存的程序；`pipeline.py` 自己会重试 6 次 |
-| 训练 `OUT OF MEMORY` | 稠密点太多 | `--points-every 2`（pipeline.py 在 > 2.5 M 点时自动设） |
+| 训练 `OUT OF MEMORY` | 稠密点太多 | `--points-every N`：只取每第 N 个稠密点作起始点（pipeline.py 自动设 N = ⌈点数 / 2.5 M⌉：2.5 M 以内 1，5 M 以内 2……；仍不够就手动加大） |
 | 训练停在中途、WSL 停了 | 电脑睡眠了 | `pipeline.py` 运行时阻止空闲睡眠，但手动睡眠、合盖仍会打断；删掉半途的 `run_main/` 重跑 train |
 | 对比视频 / 场景里画面对不上 | 非 Sheffield 视频没给 `--plain --crop --stretch-x` | 用 `pipeline.py`（自动传）；单独运行脚本时三个参数和前端一致 |
 
@@ -199,7 +199,7 @@ python -I scripts/pipeline.py sewer_pipe2 D:/pipe3d_e2e/data/Pipe2.avi --camera-
 | 看视频、定参数 | — | 720 × 576、25 fps、15 174 帧。计数器烧录在第 495–520 行 → `--crop 0 0 720 490`；第 450 帧起前进、约 13 cm/s → `--every 2`（每帧约 1 cm）；第 2758 帧进检查井，第 8276 帧后在管端转镜头、倒车 → 只用第 450–1500 帧（计数器 0.2–5.1 m） |
 | 标定 | 约 2 分钟 | 60 张棋盘格，像素宽高比 1.0155，f 494.9 px、k1 −0.253、重投影 0.33 px（10-17 给 Pipe1 用同一视频标定的是 f 489.7、k1 −0.248，相差约 1 %） |
 | frontend，第一次 | 7 分钟后停下 | 第 7 步 `no usable initial pair found`：管壁光滑、纹理少，可靠匹配数随帧间隔下降很快（中位数：相邻 1 帧 147、2 帧 78、3 帧 58、6 帧 39），没有相隔 ≥ 6 帧且 ≥ 60 个匹配的帧对 |
-| frontend，加 `--loose` 从第 7 步重跑 | 52.8 分钟 | 8 个候选起始帧对，每次 SfM 都注册 412–413 / 526 帧（各约 2.6 分钟），保留 413 帧的一次：一段连续，对应真值 1.0–5.1 m（开头 0.2–1.0 m 没接上）。OpenMVS 稠密 25 分钟（243 万点）、网格 1 分钟、贴图 5.5 分钟 |
+| frontend，加 `--loose` 从第 7 步重跑 | 52.8 分钟 | 8 个候选起始帧对，每次 SfM 都注册 412–413 / 526 帧（各约 2.6 分钟），保留 413 帧的一次（78.5 %，低于 2.5 节的 90 %）：一段连续，对应真值 1.0–5.1 m（开头 0.2–1.0 m 没接上）。OpenMVS 稠密 25 分钟（243 万点）、网格 1 分钟、贴图 5.5 分钟 |
 | gt | 1 秒 | 定位误差 MAE 15.3 cm（这段长度的 3.7 %），最大 43 cm；两个 2 m 窗口的局部尺度相差 31 %（单目尺度漂移）；按真值尺度推出的管径约 194 mm → 后面用 `--diameter-m 0.194` |
 | scene | 4.9 分钟 | 413 帧（20 帧在两段 10 cm 整段留出里，训练 393 帧），44 张序列内留出帧；对照 B 的灯光图自动学习 |
 | surface | 2.2 分钟 | 网格管壁 + 管道先验高度场；高度场半径中位 97 mm，但 p5–p95 为 45–151 mm（见下面"几何"） |
@@ -221,7 +221,7 @@ python -I scripts/pipeline.py sewer_pipe2 D:/pipe3d_e2e/data/Pipe2.avi --camera-
 | 对照 B：OpenMVS 网格贴图 × 平场灯光图 | 22.74（错位 8.8 px） | 22.58（错位 11.9 px） |
 | 参照：视频自己的下一帧（对齐后） | 38.17 | 38.22 |
 
-渲染深度对稠密点的误差 1.2 % / 1.3 %。没参加训练的帧上，主方法离"视频自身噪声决定的上限"只差 1.6–3.9 dB，比传统的网格贴图交付物高约 12–14 dB。
+渲染深度对稠密点的误差 1.2 % / 1.3 %。没参加训练的帧上，主方法比"视频自己的下一帧（对齐后）"低 1.6–3.9 dB（这个参照不是严格上限，见 EVALUATION.md 第 1 节），比传统的网格贴图交付物高约 12–14 dB。
 ![Pipe2 留出帧：视频原帧 / 主方法高斯模型 / 带纹理网格](images/pipe2_heldout_frames.jpg)
 
 上图：Pipe2 没参加训练的帧（上两行序列内、下两行整段留出），从左到右是视频原帧、主方法高斯模型、带纹理网格，标的是 PSNR。
@@ -279,7 +279,7 @@ python -I pipesplat/export_g0.py vision <WORK_NEW>/sewer_pipe1/work <视频>/Pip
 | 数据相关的选项 | 15 m 管网（`concrete_lab`）加 `--points-every 2`；InPipe（`inpipe_vision`）、Pipe1（`sewer_pipe1`）加 `--surface surface_vhf.npz`；种子 `--seed 1` / `--seed 2` |
 
 例：`bash pipesplat/review/queue.sh "concrete_2 run_main --baseline 3dgs --baseline-depth 1.0 --lamp --lamp-smooth-mm 20 --lamp-ambient"`。
-重新训练的模型与记录里的不会逐位相同（GPU 上的求和顺序），种子之间的差 0.01–0.14 dB。已训练的模型重新评分是逐位（带车灯模型的到 10⁻⁶ 的浮点噪声）相同的：
+重新训练的模型与记录里的不会逐位相同（GPU 上的求和顺序不固定），差别预计在种子间差的量级（主表中带几何监督的方法，3 个种子的标准差 0.01–0.13 dB），但没有专门测过。已训练的模型重新评分是逐位（带车灯模型的到 10⁻⁶ 的浮点噪声）相同的：
 
 ```bash
 wsl -d pipe3d -u root -- /opt/gsenv/bin/python /mnt/<…>/pipesplat/rescore.py concrete_2/run_main sewer_pipe1/run_main

@@ -24,6 +24,20 @@ python -I scripts/download_data.py sheffield-sewer D:/data/sewer Pipe2.avi "Cali
 Sheffield 视频的计数器是视觉分支的里程真值；`scripts/vision/evaluate.py counter`（人工给字形簇标数字）或 `scripts/vision/counter_ocr.py`（模板匹配）读出 `counter.csv`。
 污水管数据集的 `Ground truth distances.csv` 由 `scripts/pipeline.py --gt 文件 --gt-row Pipe2` 转成同样格式（第 k 列 = 源视频第 k − 1 帧）。
 
+**名字对照**（文档里的代号、视频、场景文件夹 `GS_ROOT/g0/<文件夹>`、前端工作目录的来源）：
+
+| 文档里的代号 | 视频 | 场景文件夹 | 前端工作目录 |
+|---|---|---|---|
+| 15 m 管网（混凝土段，r1；旧记录里叫"实验室管"、lab） | `300mm_mix_15meters_ON_3lm_3u_CLOSED_1_stop_at_14meters.mp4` | `concrete_lab` | Release v1.0 `concrete_lab.zip` |
+| 5 m 混凝土管 | `300mm_concrete_5meters_ON_2lm_2u_CLOSED_2.mp4`（concrete_2） | `concrete_2` | Release v1.0 `sheffield_concrete_2.zip` |
+| InPipe | InPipe-SLAM 序列 172011 的彩色相机 | `inpipe_vision` | 无（直接用 Release v2.0 的 `inpipe_172011_scene.zip`） |
+| Pipe1 | `Pipe1.avi` | `sewer_pipe1` | Release v1.0 `sewer_pipe1.zip` |
+| Pipe2 | `Pipe2.avi` | `sewer_pipe2` | 端到端测试时新建（PIPELINE.md 第 4 节） |
+
+训练名（场景文件夹下的 `run_<训练名>/`）：`run_3dgs`（3DGS）、`run_3dgs_depth`（深度监督 3DGS）、`run_3dgs_depth_lamp`（+ 车灯模型，不含环境光项）、
+`run_3dgs_depth_lamp_amb`（主方法）、`run_3dgs_depth_expo`（只有每帧曝光），后缀 `_s1`、`_s2` 是种子 1、2。InPipe、Pipe1 上同样的配置名字前多一个 `u_`
+（如 `run_u_3dgs_depth_lamp_amb`，选项相同，只多 `--surface surface_vhf.npz`）。Pipe2 和 `pipeline.py` 默认的主方法叫 `run_main`。
+
 ---
 
 ## 2. 目录布局
@@ -69,6 +83,7 @@ GS_ROOT/g0/<名字>/                   高斯部分的场景目录（--scene 指
 | `held_images`、`held_next`、`held_viewmats`、`held_B`、`held_mask`、`held_ids`、`held_pos` | 44 × … | 序列内留出帧（两帧之间的视频帧，插值位姿；`--every 1` 时是不参加训练的注册帧） |
 | `points` | P × 3 | 稠密点（高斯的起始位置） |
 | `depth_points` | P × 3 | 同一稠密点（评分时"渲染深度误差"的参照） |
+| `train_run`（可选） | N | `export_multi.py` 写：每个训练帧来自哪次巡检（0 = 参考巡检，1、2… = 按 `--add` 顺序加进来的巡检） |
 | `train_drop`（可选） | | `export_multi.py --only-added`：参考巡检只作测试 |
 
 `scene.json`：数据来源（work、video）、抽帧步长、帧数、整段留出范围、点数、相机。

@@ -5,8 +5,9 @@ usage: python paired_stats.py RUN_A/per_frame_SUFFIX.csv RUN_B/per_frame_SUFFIX.
        [--names A B] [--boot 10000]
 For every tag (test set) the frames present in both files are paired by frame id. Reported: n, median of A and B,
 median of A - B with its bootstrap 95 % interval (percentile method, resampling frames), the share of frames where
-A is better, and the two-sided p-value of the Wilcoxon signed-rank test (normal approximation with the tie and zero
-corrections of Pratt / Wilcoxon; adequate for n >= 20).
+A is better, and the two-sided p-value of the Wilcoxon signed-rank test (zero differences dropped, tied ranks
+averaged; exact for n <= 50, i.e. the distribution of the signed-rank sum over all 2^n sign patterns of the observed
+ranks, as scipy does for small samples; normal approximation with the tie correction above 50).
 For metrics where lower is better (lpips, shift_px, depth_rel_err) "better" means lower.
 """
 import argparse
@@ -23,7 +24,8 @@ def read(p):
 
 
 def wilcoxon_p(d):
-    """two-sided p of the Wilcoxon signed-rank test, normal approximation; zeros dropped (Wilcoxon), ties averaged"""
+    """two-sided p of the Wilcoxon signed-rank test; zeros dropped (Wilcoxon), ties averaged; exact for n <= 50,
+    normal approximation above"""
     d = d[d != 0]
     n = len(d)
     if n == 0:
@@ -37,6 +39,15 @@ def wilcoxon_p(d):
         if m.sum() > 1:
             ranks[m] = ranks[m].mean()
     w = ranks[d > 0].sum()
+    if n <= 50:                                     # exact; ranks are multiples of 0.5, so work with 2 x rank
+        r2 = np.rint(2 * ranks).astype(int)
+        dist = np.zeros(r2.sum() + 1)               # distribution of 2 x (signed-rank sum) under random signs
+        dist[0] = 1.0
+        for r in r2:
+            dist = 0.5 * (dist + np.r_[np.zeros(r), dist[:-r]])
+        k = np.arange(len(dist))
+        far = np.abs(2 * k - r2.sum()) >= abs(2 * int(round(2 * w)) - r2.sum())
+        return float(min(1.0, dist[far].sum()))
     mu = n * (n + 1) / 4
     _, cnt = np.unique(a, return_counts=True)
     var = n * (n + 1) * (2 * n + 1) / 24 - (cnt ** 3 - cnt).sum() / 48

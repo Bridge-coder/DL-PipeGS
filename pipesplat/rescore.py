@@ -1,6 +1,6 @@
 """Re-score trained runs with ruler v2 (train_gs.py --eval-only), each with the model flags it was trained with (read
 from its own summary), one after another, and print the old and the new numbers side by side: the check after a
-restore from GitHub or after a code change (docs/全流程运行.md). Runs in WSL.
+restore from GitHub or after a code change (docs/PIPELINE.md, section 5). Runs in WSL.
 
 usage: /opt/gsenv/bin/python pipesplat/rescore.py DATA/RUN [DATA/RUN ...] [--suffix _rescore] [--dump]
        DATA/RUN under GS_ROOT/g0 (scripts/paths.py); writes RUN/summary<suffix>.json and per_frame<suffix>.csv;

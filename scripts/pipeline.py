@@ -1,4 +1,4 @@
-"""From one pipe-inspection video to the 3-D model: every stage of the method in order (docs/全流程运行.md).
+"""From one pipe-inspection video to the 3-D model: every stage of the method in order (docs/PIPELINE.md).
 
 usage: python -I scripts/pipeline.py NAME VIDEO [options]            run the stages that are not done yet
        python -I scripts/pipeline.py NAME VIDEO [options] --from train --to export
@@ -38,7 +38,8 @@ Options
   --gt CSV [--gt-row ROW]  travel ground truth: a counter.csv (source_frame,counter_m), or with --gt-row the wide table
                            of the Sheffield sewer data set ("Ground truth distances.csv", one row per pipe, e.g. Pipe2)
   --surface mesh|vhf       measured wall for the depth supervision and the lamp model (default mesh)
-  --points-every N         start from every Nth dense point (default: 1, or 2 above 2.5 M points; 8 GB GPU)
+  --points-every N         start from every Nth dense point (default: ceil(points / 2.5 M), i.e. 1 up to 2.5 M points,
+                           2 up to 5 M, ...; for an 8 GB GPU)
   --run NAME --iters N --seed S        (run_main, 30000, 0)
   --work DIR --scene DIR   instead of WORK_NEW/NAME and GS_ROOT/g0/NAME
 WSL distro and Python: PIPE3D_WSL_DISTRO (default pipe3d), PIPE3D_WSL_PYTHON (default /opt/gsenv/bin/python).
@@ -61,7 +62,7 @@ import paths  # noqa: E402
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 STAGES = ("frontend", "gt", "scene", "surface", "train", "export", "figures")
-# the main method (docs/模型说明.md): 3DGS + dense depth supervision (B1) + lamp model (B2) + ambient term (B3);
+# the main method (docs/MODEL.md): 3DGS + dense depth supervision (B1) + lamp model (B2) + ambient term (B3);
 # --lamp also learns the per-frame exposure (B4)
 MAIN = ["--baseline", "3dgs", "--baseline-depth", "1.0", "--lamp", "--lamp-smooth-mm", "20", "--lamp-ambient"]
 DISTRO = os.environ.get("PIPE3D_WSL_DISTRO", "pipe3d")

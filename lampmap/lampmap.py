@@ -22,8 +22,9 @@ Using it: render x exp(map), then the frame's own gain + offset (its exposure) -
 held-out frame. The comparison:
   A  model       render, gain + offset only (the usual "brightness-matched" comparison)
   B  model x lamp map
-  N  next frame  the video's own next frame in place of a render: about what a perfect model could reach given the
-                 video's noise (an optimistic reference for LPIPS: the next frame shares the video's noise texture)
+  N  next frame  the video's own next frame in place of a render: a reference for how much two consecutive frames
+                 of the video differ, not a strict upper bound (a render is smoother than the video and can score
+                 above it); optimistic for LPIPS, since the next frame shares the video's noise texture
 """
 import argparse
 import csv
