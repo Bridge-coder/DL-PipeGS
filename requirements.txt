@@ -1,9 +1,10 @@
-# Python 3.13 (tested with 3.13.0 on Windows 10). Only numpy / OpenCV / matplotlib / Pillow are needed for the
-# video pipeline; mcap + mcap-ros2-support only for reading ROS 2 bags (lidar/extract_bag.py).
-# No scipy / open3d / torch: all fitting and rendering is plain numpy.
+# Windows side (front end, scene export, evaluation, figures). Python 3.13 (tested with 3.13.0 on Windows 10).
+# numpy / OpenCV / matplotlib / Pillow are all the front end needs; the reconstruction core runs the OpenMVG 1.6 /
+# OpenMVS 2.4.0 Windows binaries (tools/install_third_party.py).
 numpy==2.3.2
 opencv-python==5.0.0.93
 matplotlib==3.10.7
 pillow==12.0.0
-mcap==1.5.0
-mcap-ros2-support==0.5.7
+# The Gaussian part (pipesplat/train_gs.py and the other WSL scripts) runs in its own environment inside WSL:
+# torch 2.9.1 + CUDA 12.8, gsplat 1.6.0 (commit 512d366), fused-ssim, lpips, scipy - installed by pipesplat/setup/*.sh.
+# Optional on Windows: torch (CPU) for pipesplat/export_ply.py outside WSL.

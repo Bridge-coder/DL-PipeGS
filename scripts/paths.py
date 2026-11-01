@@ -2,25 +2,19 @@
 
 Every script takes its locations from here, so the repository can be moved to another machine without editing
 code. Three layers, later ones win:
-  1. defaults below (everything inside the repository: third_party/, data/, work/, results/)
+  1. defaults below (everything inside the repository: third_party/, work/, logs/)
   2. config/paths.json (copy config/paths.example.json and edit; git-ignored, so it stays on this machine)
-  3. environment variables PIPE3D_<KEY>, e.g. PIPE3D_RECON_BIG=E:/scratch/recon (used for test re-runs)
+  3. environment variables PIPE3D_<KEY>, e.g. PIPE3D_GS_ROOT=E:/gs (used for test runs in a clean folder)
 Relative paths in paths.json are taken relative to the repository root. The same file serves the WSL side
 (pipesplat runs in the pipe3d distro): there a Windows drive path such as D:/pipe3d_gs becomes /mnt/d/pipe3d_gs.
 
 Keys
-  MVG_BIN         folder with the OpenMVG 1.6 Windows binaries (openMVG_main_*.exe)
+  MVG_BIN         folder with the OpenMVG 1.6 Windows binaries (openMVG_main_*.exe; tools/install_third_party.py)
   MVS_BIN         folder with the OpenMVS 2.4.0 Windows binaries (DensifyPointCloud.exe, ...)
-  LOGS            folder for the step logs of run_pipeline.py / run_vision.py (one subfolder per work folder)
-  INPIPE_EXTRACT  InPipe-SLAM sequence extracted by lidar/extract_bag.py (bag_info.json, lidar/, images/, ...)
-  INPIPE_VISION   work folder of the vision run on that sequence (vision/run_vision.py)
-  INPIPE_RESULTS  small results and figures of that sequence (fusion/, recon/, lidar/, tag/, vision/, viz/)
-  FUSED_BIG       large outputs of fusion/f5_fuse.py (coloured LiDAR wall point cloud)
-  RECON_BIG       large outputs of recon/r1..r5 (wall points, height field, textures, model/, viz/)
-  DIAG_BIG        large outputs of analysis/wall_blur_*.py
-  WORK_SHEFFIELD  work folders of the Sheffield runs (concrete_1 ... concrete_5, mix15_2; v1.0 Release zips)
-  WORK_NEW        work folders of the new-video tests (concrete_lab, sewer_pipe1/work; v1.0 Release zips)
-  GS_ROOT         the Gaussian line (pipesplat, docs/06-11): g0/<data>/ scenes and runs, review/, logs/, queue.pause
+  LOGS            folder for the step logs of run_pipeline.py (one subfolder per work folder)
+  WORK_SHEFFIELD  front-end work folders of the Sheffield runs (concrete_1 ... concrete_5, mix15_2; v1.0 Release zips)
+  WORK_NEW        front-end work folders of other videos: WORK_NEW/<name>/work (scripts/pipeline.py default)
+  GS_ROOT         the Gaussian part: g0/<name>/ scenes and trained runs, review/, logs/ (scripts/pipeline.py default)
   TORCH_CACHE     TORCH_HOME for pipesplat (LPIPS / AlexNet weights)
 
 usage: python scripts/paths.py        every key, and whether it exists
@@ -37,12 +31,6 @@ _DEFAULTS = {
     "MVG_BIN": "third_party/openMVG_v1.6/ReleaseV1.6.Halibut.WindowsBinaries_VS2017",
     "MVS_BIN": "third_party/openMVS_v2.4.0/vc17/x64/Release",
     "LOGS": "logs",
-    "INPIPE_EXTRACT": "work/inpipe_172011/extract",
-    "INPIPE_VISION": "work/inpipe_172011/vision",
-    "INPIPE_RESULTS": "results/inpipe_172011",
-    "FUSED_BIG": "work/inpipe_172011/fused",
-    "RECON_BIG": "work/inpipe_172011/recon",
-    "DIAG_BIG": "work/inpipe_172011/diag",
     "WORK_SHEFFIELD": "work/sheffield",
     "WORK_NEW": "work/new_videos",
     "GS_ROOT": "work/pipe3d_gs",
@@ -63,7 +51,7 @@ def _load():
     path = os.path.join(REPO, "config", "paths.json")
     if os.path.exists(path):
         with open(path, encoding="utf-8") as f:
-            cfg.update({k: v for k, v in json.load(f).items() if not k.startswith("_")})
+            cfg.update({k: v for k, v in json.load(f).items() if k in _DEFAULTS})   # unknown keys (old files) ignored
     for k in list(cfg):
         cfg[k] = _native(os.environ.get("PIPE3D_" + k, cfg[k]))
     return {k: os.path.normpath(v if os.path.isabs(v) else os.path.join(REPO, v)) for k, v in cfg.items()}
@@ -71,8 +59,6 @@ def _load():
 
 P = _load()
 MVG_BIN, MVS_BIN, LOGS = P["MVG_BIN"], P["MVS_BIN"], P["LOGS"]
-INPIPE_EXTRACT, INPIPE_VISION, INPIPE_RESULTS = P["INPIPE_EXTRACT"], P["INPIPE_VISION"], P["INPIPE_RESULTS"]
-FUSED_BIG, RECON_BIG, DIAG_BIG = P["FUSED_BIG"], P["RECON_BIG"], P["DIAG_BIG"]
 WORK_SHEFFIELD, WORK_NEW, GS_ROOT, TORCH_CACHE = P["WORK_SHEFFIELD"], P["WORK_NEW"], P["GS_ROOT"], P["TORCH_CACHE"]
 
 

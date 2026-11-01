@@ -17,7 +17,8 @@ logs/
 *.bin
 *.zip
 *.7z
-results/**/textured_model/
+# local result folders (figures, renders, videos): share them through Releases, not git
+results/
 # Python
 __pycache__/
 *.pyc

@@ -10,7 +10,8 @@ usage: python -I lampmap.py WORK_DIR VIDEO OUT_DIR [--n 44] [--train 40] [--ahea
        --plain/--crop/--stretch-x  the frame geometry given to run_pipeline.py for a non-Sheffield video
        OUT_DIR   lamp_map.npy (log gain, image size), lamp_map.png, summary.json, per_frame.csv,
                  renders/heldout_<frame>.jpg (--save of them: video frame | model | model x lamp map)
-The LiDAR + vision model of InPipe-SLAM uses the same functions: lampmap_inpipe.py.
+pipesplat/export_g0.py uses the same functions to put baseline B and its mask (the pixels every model is scored on)
+into each training scene; --lamp auto there learns the map exactly as here.
 Run with a Windows Python that has torch + lpips (on the author's machine the da3 conda env) and TORCH_HOME set to
 get LPIPS as well; without them LPIPS is NaN (imgmetrics.py).
 

@@ -40,6 +40,25 @@ r_ref)^2, train_gs.py) and gain_n / offset_n the model's exposure of training fr
   Scored twice: summary_r2.json = the mesh with the model's headlight (L x A + E, then the frame's gain + offset as
   every model), summary_r2_static.json = texture.png x a camera-fixed lamp map (the recipe above, comparable with Y2).
 
+--two-light --source unwrap (11-01, the figures of the main model): albedo and ambient taken from the model's Gaussians
+themselves instead of solved from the video: the albedo is the colour the lamp factor multiplies, the ambient the
+added colour, so frame = gain_n x (L x albedo + ambient) + offset_n holds by construction wherever the model renders
+the wall. Both are rendered by virtual pinhole cameras on the centerline, every --unwrap-step-mm along u, in
+--unwrap-dirs directions around it, each looking radially at the wall (x = increasing theta, y = +u, z = outward):
+every ray in a camera's cross-section plane is radial, so theta has no parallax and u only a little (texels are
+blended from the two nearest stations and the two nearest directions, bilinear weights). Only the Gaussians whose
+centre lies within -IN..+OUT mm (--unwrap-band-mm) of the tube (moved onto the model's surface) are drawn: floaters in
+the pipe and Gaussians behind the wall, which the inspection camera never sees, are left out. Colour = the Gaussians'
+spherical harmonics toward the centerline point --unwrap-view-z behind them (the direction the robot saw them from,
+--unwrap-colour view) or their view-independent base colour (dc); normalised by the rendered alpha; texels kept where
+alpha >= --unwrap-alpha and the rendered depth is the tube's (1.5 % + 3 mm). The video bake still runs first, for the
+typical lamp factor of texture.png. Also writes unwrap.npz: alpha, the radius of the rendered surface and the seen
+mask per texel (rows = theta). First result (InPipe): the 3DGS Gaussians, trained from views along the pipe only,
+are needles when seen face-on - streaks in the texture.
+--two-light --source delit: the same two textures from the model rendered at the training poses (as the robot saw
+the wall, so the Gaussians look as trained): per texel the near-weighted mean of the model's own colour (its albedo,
+spherical harmonics toward that camera) and of its ambient render, visible where the model is opaque at the tube.
+
 usage: TORCH_HOME=<TORCH_CACHE of scripts/paths.py> /opt/gsenv/bin/python pipesplat/bake_vhf.py SCENE_DIR MODEL_RUN OUT_DIR
            [--name vhf] [--texel-mm 0.5] [--near-tau 1] [--ref-z auto] [--lp-mm 12] [--alpha-min 0.95] [--far 1.2]
 """
@@ -57,8 +76,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import gsplat
+from gsplat.cuda._torch_impl import _spherical_harmonics
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE =os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lampmap"))
 sys.path.insert(0, HERE)
 import imgmetrics as im  # noqa: E402
@@ -82,10 +102,24 @@ ap.add_argument("--flat-iters", type=int, default=1,
                 help="video source: learn the frames' camera-fixed shading (lamp x vignetting) against the baked texture, "
                      "divide it out of the frames and bake again, this many times (0 = off)")
 ap.add_argument("--edge-px", type=float, default=30.0, help="samples closer than this to the frame border weigh less")
-ap.add_argument("--source", choices=("video", "model"), default="video",
-                help="texel colours from the raw training frames (default) or from the Gaussian model's renders")
+ap.add_argument("--source", choices=("video", "model", "delit", "unwrap"), default="video",
+                help="texel colours from the raw training frames (default), from the Gaussian model's renders, or "
+                     "(--two-light) the model's albedo / ambient rendered at the training poses (delit) or seen from "
+                     "the centerline (unwrap)")
 ap.add_argument("--two-light", action="store_true",
-                help="albedo + ambient textures with the model's lamp (see the module docstring); --source video, no flat field")
+                help="albedo + ambient textures with the model's lamp (see the module docstring); --source video or "
+                     "unwrap, no flat field")
+ap.add_argument("--unwrap-step-mm", type=float, default=20.0, help="--source unwrap: stations along the centerline")
+ap.add_argument("--unwrap-dirs", type=int, default=12, help="--source unwrap: cameras around the centerline per station")
+ap.add_argument("--unwrap-ss", type=float, default=1.5, help="--source unwrap: rendered pixels per texel on the wall")
+ap.add_argument("--unwrap-band-mm", type=float, nargs=2, default=(15.0, 10.0),
+                help="--source unwrap: Gaussians drawn whose centre is IN mm inside .. OUT mm outside the tube")
+ap.add_argument("--unwrap-colour", choices=("view", "dc"), default="view",
+                help="--source unwrap: spherical harmonics toward the robot's typical view, or the base colour only")
+ap.add_argument("--unwrap-view-z", type=float, default=None,
+                help="--source unwrap, view: the robot's camera this far behind the Gaussian on the centerline (m); "
+                     "default the ref distance")
+ap.add_argument("--unwrap-alpha", type=float, default=0.5)
 a = ap.parse_args()
 dev = "cuda"
 os.makedirs(os.path.join(a.out, "renders"), exist_ok=True)
@@ -144,7 +178,7 @@ GS = {k: sv[k].to(dev) for k in ("means", "quats", "scales", "opacities", "sh0",
 lamp_model = "lamp_logM" in sv
 if a.two_light:
     assert lamp_model and "amb" in sv, "--two-light needs a --lamp --lamp-ambient model (train_gs.py)"
-    assert a.source == "video", "--two-light bakes the albedo from the video"
+    assert a.source != "model", "--two-light: the albedo from the video or the model's albedo (--source delit / unwrap)"
     a.flat_iters = 0                            # the lamp model replaces the flat field
     LP = {k: sv["lamp_" + k].to(dev) for k in ("logM", "t", "gain", "off")}
     AMB = torch.sigmoid(sv["amb"].to(dev))
@@ -227,7 +261,8 @@ VR = torch.from_numpy(valid_raw).to(dev)
 VR_in = torch.from_numpy(cv2.erode(valid_raw.astype(np.uint8), np.ones((m_, m_), np.uint8)) > 0).to(dev)
 raw_train = d["train_images"]
 R2MAX = 0.95 ** 2 / (-3 * k1) if k1 < 0 else float("inf")
-assert a.source == "video" or not lamp_model, "a --lamp model's own colour is de-lit: bake it with --source video"
+assert a.source != "model" or not lamp_model, "a --lamp model's own colour is de-lit: bake it with --source video"
+assert a.source not in ("delit", "unwrap") or a.two_light, "--source delit / unwrap are --two-light bakes"
 
 
 # texture grid
@@ -277,7 +312,7 @@ def project_view(view, cols, n):
     z = Xc[:, 2]
     ok = (z > 0.02) & ~op
     xn, yn = Xc[:, 0] / z.clamp(min=1e-6), Xc[:, 1] / z.clamp(min=1e-6)
-    if a.source == "video":                     # the raw frame: distorted pixel, the tube's own depth
+    if a.source in ("video", "unwrap"):         # the raw frame: distorted pixel, the tube's own depth
         r2 = xn ** 2 + yn ** 2
         ok &= r2 < R2MAX
         g_ = 1 + k1 * r2
@@ -520,8 +555,12 @@ def bake_two():
         y = (c - LP["off"][n]) / torch.exp(LP["gain"][n])          # the frame without the model's exposure
         sl = slice(lo * NTH, lo * NTH + len(cols) * NTH)
         wn_ = torch.where(ok, we * torch.exp(-(fp / fp_best[sl] - 1) / a.near_tau), torch.zeros_like(fp))
-        acc_a[sl] += (wn_ * L)[:, None] * (y - E)
-        w_a[sl] += wn_ * L ** 2
+        if a.source == "delit":                 # the model's albedo itself (its colour before the lamp factor)
+            acc_a[sl] += wn_[:, None] * c
+            w_a[sl] += wn_
+        else:                                   # least squares against the frame
+            acc_a[sl] += (wn_ * L)[:, None] * (y - E)
+            w_a[sl] += wn_ * L ** 2
         we_ = torch.where(ok, we, torch.zeros_like(fp))
         acc_e[sl] += we_[:, None] * E
         w_e[sl] += we_
@@ -536,6 +575,124 @@ def bake_two():
         f"albedo p50 {np.median(alb[lay(seen_t[:, None])[..., 0]]):.3f}, ambient p50 {np.median(amb[lay(seen_t[:, None])[..., 0]]):.3f}, "
         f"typical lamp factor {L_typ:.2f} (r_ref {R_REF * 1000:.0f} mm) [{time.time() - t_b:.0f} s]")
     return alb, amb, lay(seen_t[:, None])[..., 0], L_typ
+
+
+@torch.no_grad()
+def unwrap_two():
+    """--source unwrap: the model's albedo and ambient seen from the centerline (module docstring); returns albedo,
+    ambient (rows = theta) and the seen mask"""
+    t_b = time.time()
+    b_in, b_out = a.unwrap_band_mm[0] / 1000, a.unwrap_band_mm[1] / 1000
+    mu = GS["means"]
+    keep = torch.zeros(len(mu), dtype=torch.bool, device=dev)
+    ug = torch.zeros(len(mu), device=dev)
+    for s in range(0, len(mu), 200000):         # every Gaussian's place relative to the (moved) tube
+        X = mu[s:s + 200000]
+        u, th = to_pipe(X)
+        C, N, Bn = cl_frame(u)
+        q = X - C
+        dr = torch.hypot((q * N).sum(1), (q * Bn).sum(1)) - grid_r(u, th)
+        keep[s:s + 200000] = (dr > -b_in) & (dr < b_out) & (u > U0 - 0.02) & (u < UT1 + 0.02)
+        ug[s:s + 200000] = u
+    uc = torch.tensor([c[1] for c in cams], device=dev)
+    _, N, Bn = cl_frame(uc)
+    fwd = views_all[torch.tensor([c[0] for c in cams], device=dev)][:, 2, :3]     # the cameras' optical axes (world)
+    sgn = 1.0 if float(torch.median((fwd * torch.cross(N, Bn, dim=1)).sum(1))) > 0 else -1.0
+    sh = torch.cat([GS["sh0"], GS["shN"]], 1)[keep]
+    if a.unwrap_colour == "dc":
+        col = (0.5 + 0.28209479177387814 * sh[:, 0]).clamp(min=0)
+    else:                                       # toward the centerline point the robot saw the Gaussian from
+        vz = a.unwrap_view_z or ref_z
+        dirs = F.normalize(mu[keep] - cl_frame(ug[keep] - sgn * vz)[0], dim=1)      # camera -> Gaussian, as gsplat
+        col = torch.cat([_spherical_harmonics(3, dirs[s:s + 200000], sh[s:s + 200000])  # gsplat's own reference
+                         for s in range(0, len(dirs), 200000)]).add(0.5).clamp(min=0)
+    feats = torch.cat([col, AMB[keep]], 1)
+    m_, q_, s_, o_ = mu[keep], GS["quats"][keep], torch.exp(GS["scales"][keep]), torch.sigmoid(GS["opacities"][keep])
+    del sh, col
+    nd, step = a.unwrap_dirs, a.unwrap_step_mm / 1000
+    sector = 2 * math.pi / nd
+    f_ = R_med / (a.texel_mm / 1000 / a.unwrap_ss)
+    r_lo = float(np.percentile(RG, 0.5))
+    W_ = 2 * int(math.ceil(f_ * math.tan(sector + math.radians(2)))) + 2
+    H_ = 2 * int(math.ceil(f_ * 1.05 * step / (r_lo * math.cos(sector)))) + 2
+    Ku = torch.tensor([[f_, 0, W_ / 2], [0, f_, H_ / 2], [0, 0, 1]], device=dev, dtype=torch.float32).repeat(nd, 1, 1)
+    us = U0 + np.arange(int(math.ceil((UT1 - U0) / step)) + 1) * step
+    th_c = torch.tensor(-math.pi + np.arange(nd) * sector + th0, device=dev, dtype=torch.float32)
+    log(f"unwrap: {int(keep.sum()):,} of {len(mu):,} Gaussians within -{a.unwrap_band_mm[0]:.0f}..+{a.unwrap_band_mm[1]:.0f} mm "
+        f"of the tube; colour {a.unwrap_colour}" + (f" (robot looks toward {'+' if sgn > 0 else '-'}u)" if a.unwrap_colour == "view" else "")
+        + f"; {len(us)} stations x {nd} cameras, {W_} x {H_} px, f {f_:.0f}")
+    acc_a, acc_e = torch.zeros(NT, 3, device=dev), torch.zeros(NT, 3, device=dev)
+    acc_w, acc_r = torch.zeros(NT, device=dev), torch.zeros(NT, device=dev)
+    acc_al, acc_wt = torch.zeros(NT, device=dev), torch.zeros(NT, device=dev)
+    n_alpha, n_depth = 0.0, 0.0
+    for k, u_s in enumerate(us):
+        lo, hi = max(0, int(math.floor((u_s - step - U0) / du))), min(NU, int(math.ceil((u_s + step - U0) / du)))
+        if hi <= lo:
+            continue
+        C, N, Bn = cl_frame(torch.full((nd,), float(u_s), device=dev))
+        rad = torch.cos(th_c)[:, None] * N + torch.sin(th_c)[:, None] * Bn
+        tan = -torch.sin(th_c)[:, None] * N + torch.cos(th_c)[:, None] * Bn
+        Rcv = torch.stack([tan, torch.cross(N, Bn, dim=1), rad], 1)                 # rows: x, y, z of each camera
+        vm = torch.eye(4, device=dev).repeat(nd, 1, 1)
+        vm[:, :3, :3], vm[:, :3, 3] = Rcv, -(Rcv @ C[:, :, None])[..., 0]
+        out, al, _ = gsplat.rasterization(m_, q_, s_, o_, feats[:, :3], vm, Ku, W_, H_, packed=True,
+                                          render_mode="RGB+ED", near_plane=0.01, far_plane=100.0)
+        oute, _, _ = gsplat.rasterization(m_, q_, s_, o_, feats[:, 3:], vm, Ku, W_, H_, packed=True, render_mode="RGB",
+                                          near_plane=0.01, far_plane=100.0)        # (gsplat here: 3 or 4 channels)
+        img = torch.cat([out[..., :3] / al.clamp(min=1e-4), oute / al.clamp(min=1e-4), out[..., 3:4], al],
+                        -1).permute(0, 3, 1, 2)
+        cols = COLS[lo:hi]
+        X, _, op = texel_points(cols)
+        U = tu[cols][:, None].expand(-1, NTH).reshape(-1)
+        TH = tt[None, :].expand(len(cols), -1).reshape(-1)
+        wu = (1 - (U - float(u_s)).abs() / step).clamp(min=0)
+        jf = (TH + math.pi) / sector
+        j0, frac = jf.floor().long() % nd, jf - jf.floor()
+        for j in range(nd):
+            idx = torch.nonzero(((j0 == j) | ((j0 + 1) % nd == j)) & (wu > 0) & ~op)[:, 0]
+            if not len(idx):
+                continue
+            wt = torch.where(j0[idx] == j, 1 - frac[idx], frac[idx]) * wu[idx]
+            Xc = (X[idx] - C[j]) @ Rcv[j].T
+            z = Xc[:, 2].clamp(min=1e-6)
+            px, py = f_ * Xc[:, 0] / z + W_ / 2, f_ * Xc[:, 1] / z + H_ / 2
+            smp = F.grid_sample(img[j:j + 1], torch.stack([px / W_ * 2 - 1, py / H_ * 2 - 1], -1)[None, None],
+                                align_corners=False, padding_mode="border")[0, :, 0].T
+            inside = (Xc[:, 2] > 0.01) & (px >= 0) & (px <= W_) & (py >= 0) & (py <= H_)
+            ok_a = inside & (smp[:, 7] >= a.unwrap_alpha)
+            ok = ok_a & ((smp[:, 6] - z).abs() < 0.015 * z + 0.003)
+            n_alpha += float((wt * inside * ~ok_a).sum())
+            n_depth += float((wt * ok_a * ~ok).sum())
+            w_ = wt * ok
+            Xh = C[j] + (smp[:, 6:7] * torch.stack([(px - W_ / 2) / f_, (py - H_ / 2) / f_, torch.ones_like(px)], -1)) @ Rcv[j]
+            Cq, Nq, Bq = cl_frame(U[idx])
+            r_hit = torch.hypot(((Xh - Cq) * Nq).sum(1), ((Xh - Cq) * Bq).sum(1))
+            g_idx = lo * NTH + idx
+            acc_a.index_add_(0, g_idx, w_[:, None] * smp[:, :3])
+            acc_e.index_add_(0, g_idx, w_[:, None] * smp[:, 3:6])
+            acc_w.index_add_(0, g_idx, w_)
+            acc_r.index_add_(0, g_idx, w_ * r_hit)
+            acc_al.index_add_(0, g_idx, wt * inside * smp[:, 7])
+            acc_wt.index_add_(0, g_idx, wt * inside)
+    seen_t = acc_w > 0
+    lay = lambda v: v.view(NU, NTH, -1).permute(1, 0, 2).cpu().numpy()  # noqa: E731
+    alb = lay(acc_a / acc_w.clamp(min=1e-12)[:, None])
+    amb = lay(acc_e / acc_w.clamp(min=1e-12)[:, None])
+    al_m = lay((acc_al / acc_wt.clamp(min=1e-12))[:, None])[..., 0]
+    r_m = lay((acc_r / acc_w.clamp(min=1e-12))[:, None])[..., 0]
+    seen = lay(seen_t[:, None])[..., 0]
+    r_tube = torch.cat([grid_r(tu[COLS[s:s + 200]][:, None].expand(-1, NTH).reshape(-1),     # the tube per texel
+                               tt[None, :].expand(len(COLS[s:s + 200]), -1).reshape(-1)) for s in range(0, NU, 200)])
+    dr_ =(lay(r_tube[:, None])[..., 0] - r_m)[seen]
+    np.savez_compressed(os.path.join(a.out, "unwrap.npz"), alpha=al_m.astype(np.float16), radius=r_m.astype(np.float32),
+                        seen=seen, u0=U0, du=du, nth=NTH)
+    tot = float(acc_wt.sum())
+    log(f"unwrap over {len(us)} stations: {seen.mean():.1%} of the texels seen; weight lost to alpha < {a.unwrap_alpha} "
+        f"{n_alpha / max(tot, 1e-9):.1%}, to depth off the tube {n_depth / max(tot, 1e-9):.1%}; alpha p5 / p50 "
+        f"{np.percentile(al_m[seen], 5):.2f} / {np.median(al_m[seen]):.2f}; rendered surface inside the tube by median "
+        f"{np.median(dr_) * 1000:+.2f} mm (|.| p95 {np.percentile(np.abs(dr_), 95) * 1000:.2f} mm); albedo p50 "
+        f"{np.median(alb[seen]):.3f}, ambient p50 {np.median(amb[seen]):.3f} [{time.time() - t_b:.0f} s]")
+    return alb, amb, seen
 
 
 def fill(img, m):
@@ -569,6 +726,8 @@ TEXA, TEXE = [None], [None]                             # --two-light: albedo an
 extra = {}
 if a.two_light:
     alb, amb, seen, L_typ = bake_two()
+    if a.source == "unwrap":                    # the video bake above gives the typical lamp factor of texture.png
+        alb, amb, seen = unwrap_two()
     alb_f, amb_f = np.clip(fill(alb, seen), 0, None), np.clip(fill(amb, seen), 0, None)
     sA = 250.0 / max(float(np.percentile(alb_f, 99.5)), 1e-6)
     sE = 250.0 / max(float(np.percentile(amb_f, 99.5)), 1e-6)

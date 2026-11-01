@@ -9,7 +9,7 @@ Usage: run_pipeline.py WORK_DIR --video VIDEO [--every N] [--first FRAME] [--las
        --camera sheffield (default): the Minicam camera of the Sheffield ORDA videos, calibrated on them
                 (768x548 frames after extract_frames.py; f 806, principal point 383/288, k1 -0.33)
        --focal/--cx/--cy/--k1: any other camera, in pixels of the frames written by step 2 (calibrate it first,
-                see README); --plain: frames are not PAL-stretched or cropped (any non-Sheffield video)
+                see docs/PIPELINE.md 2.3); --plain: frames are not PAL-stretched or cropped (any non-Sheffield video)
        --crop X0 Y0 X1 Y1 / --stretch-x S   (with --plain) passed to extract_frames.py: cut burnt-in text, make pixels
                 square; the intrinsics must be given in the pixels after both (calibrate_checkerboard.py prints them)
        --part NAME --views FIRST LAST

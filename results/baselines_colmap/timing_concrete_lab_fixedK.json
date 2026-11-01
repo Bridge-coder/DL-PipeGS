@@ -1,9 +1,0 @@
-{
- "feature_extractor": 13.3,
- "sequential_matcher": 8.6,
- "mapper": 212.2,
- "model_converter_0": 3.9,
- "models": {
-  "0": 448
- }
-}

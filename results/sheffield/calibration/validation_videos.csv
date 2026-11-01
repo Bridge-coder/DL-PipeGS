@@ -1,6 +1,0 @@
-video,role,frames,points,wall_rms_mm,radius_last_over_first,radius_min_over_median,radius_max_over_median,counter_m,est_one_scale_m,err_one_scale_pct,est_local_scale_m,err_local_scale_pct
-CLOSED_1,calibration,476/477,15214,4.6,1.031,0.981,1.018,3.93,3.937,0.2,3.932,0.1
-CLOSED_2,test,438/440,15266,5.2,0.956,0.935,1.023,4.09,4.03,-1.5,4.045,-1.1
-CLOSED_3,test,383/385,11513,5.1,0.976,0.968,1.035,3.7,3.564,-3.7,3.572,-3.5
-CLOSED_4,test,358/359,10937,4.6,0.951,0.901,1.022,3.93,3.735,-5.0,3.817,-2.9
-CLOSED_5,test,357/359,10796,4.6,0.971,0.924,1.055,3.96,3.937,-0.6,3.917,-1.1

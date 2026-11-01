@@ -1,6 +1,6 @@
-"""Re-score trained runs with ruler v2 as docs/11 did (train_gs.py --eval-only --ruler2), each with the model flags it
-was trained with (read from its own summary), one after another, and print the old and the new numbers side by side:
-the check after a restore from GitHub (docs/12) or after a code change. Runs in WSL.
+"""Re-score trained runs with ruler v2 (train_gs.py --eval-only), each with the model flags it was trained with (read
+from its own summary), one after another, and print the old and the new numbers side by side: the check after a
+restore from GitHub or after a code change (docs/全流程运行.md). Runs in WSL.
 
 usage: /opt/gsenv/bin/python pipesplat/rescore.py DATA/RUN [DATA/RUN ...] [--suffix _rescore] [--dump]
        DATA/RUN under GS_ROOT/g0 (scripts/paths.py); writes RUN/summary<suffix>.json and per_frame<suffix>.csv;
@@ -16,8 +16,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(PS), "scripts"))
 import paths  # noqa: E402
 
 G = os.path.join(paths.GS_ROOT, "g0")
-FLAGS = ("anchor", "lamp", "lamp_ambient", "raw", "pose_opt", "opaque")          # switches that change the renderer
-VALUES = ("lamp_smooth_mm", "surface", "points_every", "baseline", "thin_mm")
+FLAGS = ("anchor", "lamp", "lamp_ambient", "lamp_gamma", "lamp_colocated", "lamp_minnaert", "exposure")  # renderer switches
+# baseline_depth does not change the render, but train_gs.py needs it with --baseline 3dgs --lamp (the main method)
+VALUES = ("lamp_smooth_mm", "surface", "points_every", "baseline", "baseline_depth", "thin_mm", "sh_degree", "lamp_radial",
+          "lamp_gamma_fixed")
 PARTS = (("held_outside_blocks", "in-seq"), ("block", "block"))
 
 
@@ -27,7 +29,7 @@ def model_flags(run_dir):
     args = json.load(open(summ))["args"]
     out = [f"--{k.replace('_', '-')}" for k in FLAGS if args.get(k)]
     for k in VALUES:
-        if args.get(k) is not None and not (k == "points_every" and args[k] == 1):
+        if args.get(k) is not None and not (k == "points_every" and args[k] == 1) and not (k == "baseline_depth" and not args[k]):
             out += [f"--{k.replace('_', '-')}", str(args[k])]
     return out
 

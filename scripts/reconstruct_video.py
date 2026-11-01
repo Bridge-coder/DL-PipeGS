@@ -1,4 +1,5 @@
-"""One command for a new inspection video: reconstruction, 3-D pictures and the side-by-side video.
+"""Front end only (no Gaussian model): reconstruction, 3-D pictures of the OpenMVS mesh and the side-by-side video.
+The whole method (front end + Gaussian model) is scripts/pipeline.py.
 
 usage: python -I scripts/reconstruct_video.py VIDEO WORK_DIR [--every N] [--first F] [--last F]
                                               [--camera sheffield | --focal F --cx CX --cy CY --k1 K1 --plain]
@@ -10,8 +11,8 @@ usage: python -I scripts/reconstruct_video.py VIDEO WORK_DIR [--every N] [--firs
 --plain/--crop/--stretch-x also go to step 3 (same frame geometry); --straighten goes to steps 2 and 3 only
 (slice-by-slice pipe frame for long real sewers that bend, see render_views.py).
 Ground truth (optional): put WORK_DIR/counter.csv (vision/evaluate.py counter ...) before step 2/3 for travel numbers,
-and run vision/evaluate.py sparse / dense for the full evaluation (README, "评估").
-If step 8 registers less than 90 % of the frames, the result covers only part of the video: see README "分段重建".
+and run vision/evaluate.py sparse / dense for the full evaluation (docs/PIPELINE.md).
+If step 8 registers less than 90 % of the frames, the result covers only part of the video: see docs/PIPELINE.md 2.6.
 """
 import os
 import subprocess

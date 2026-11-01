@@ -1,8 +1,0 @@
-imu_camera: RealSense clock (reference); receive - stamp: floor -3.9 ms, drift 12.6 ppm, latency above floor p50 4.0 ms
-color: RealSense clock (reference); receive - stamp: floor 38.4 ms, drift 9.0 ppm, latency above floor p50 17.3 ms
-depth: RealSense clock (reference); receive - stamp: floor 42.2 ms, drift 10.5 ppm, latency above floor p50 22.2 ms
-LiDAR clock: envelope offset 1773331328.901668 s, drift 86.9 ppm (used as is). Check: raw |w| correlation peak 0.622 at -6.9 ms (best outside +-30 ms 0.594); 0.5 s smoothed peak 0.867 at +18 ms
-encoders: lag +110 ms from the front tag (fit scale 1.0013, rms 4.1 mm)
-encoders: lag +5 ms from the vision SfM travel (fit scale 0.9514, rms 3.5 mm)
-encoders: lag used +40 ms (combined minimum; within 5% of it: -90 .. +180 ms, i.e. about +-2.7 mm at 2 cm/s)
-rear camera: envelope offset 0.9703 s, drift 69.7 ppm; extra shift from the rear tag -90 ms (fit scale 1.0092, rms 4.0 mm)
