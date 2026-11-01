@@ -1,0 +1,34 @@
+# PipeRecon3D
+
+> 3-D reconstruction of sewer / drain pipes from one monocular, forward-looking CCTV inspection video (robot moving
+> along the pipe, lamp next to the camera). Front end: calibrated, fixed intrinsics + OpenMVG incremental SfM + OpenMVS
+> MVS (camera poses and the measured pipe wall). Model: 3D Gaussian Splatting (gsplat) with two plug-in modules: dense
+> depth supervision from the measured wall, and a near-field illumination model (inverse-square law x Lambert cosine x
+> camera-fixed flat-field gain map, plus a per-Gaussian ambient term and per-frame exposure). Evaluated on in-sequence
+> held-out frames, 10 cm spatially blocked hold-out stretches and frames of other inspection runs of the same pipe.
+> The documents are in Chinese; method names follow the literature (English terms are given in the text).
+
+Read in this order to understand the model and to plan the next improvement:
+
+## Documents
+
+- [README](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/README.md): overview, main results, model at a glance (loss and image formation), result figures, quick start, repository map, what was removed and where it is
+- [Model](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/docs/MODEL.md): architecture, formulas and symbols, hyper-parameters, every module (front end A1-A3, 3DGS, plug-ins B1-B4, evaluation C, outputs D) with what it does, why, the measured effect of removing it, alternatives; code map of train_gs.py
+- [Evaluation](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/docs/EVALUATION.md): evaluation protocol ("ruler v2": same pixels for every method, per-frame gain/offset fit, PSNR/SSIM/LPIPS/shift/band fidelity), test groups, multi-session registration, statistics (3 seeds, paired Wilcoxon + bootstrap), all result tables and ablations, the new-data end-to-end test (Pipe2)
+- [Extending](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/docs/EXTENDING.md): how to add a module to train_gs.py, evaluation rules, what was tried (including failures), unsolved problems ranked by impact, alternative methods per module
+- [Pipeline](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/docs/PIPELINE.md): installation (Windows + WSL/CUDA), running a new video step by step, troubleshooting, the Pipe2 run record, reproducing the four data sets, multi-session evaluation
+- [Data](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/docs/DATA.md): public data sets (DOI, licence), directory layout, formats of scene.npz, surface*.npz, model.pt, summary_r2.json, per_frame_r2.csv
+
+## Code
+
+- [pipesplat/train_gs.py](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/pipesplat/train_gs.py): the model - training and scoring of the main method, 3DGS / 2DGS baselines, anchored surfels and every ablation option (the module docstring lists them)
+- [scripts/pipeline.py](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/scripts/pipeline.py): one command from a video to the 3-D model (front end, ground truth check, scene export, wall, training, export, figures)
+- [scripts/vision/run_pipeline.py](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/scripts/vision/run_pipeline.py): the SfM / MVS front end in 13 steps
+- [pipesplat/export_g0.py](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/pipesplat/export_g0.py): scene export (training / held-out frames, poses, dense cloud, baseline B and the scoring mask)
+- [pipesplat/vision_surface.py](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/pipesplat/vision_surface.py): pipe-prior height-field wall for low-texture pipes
+- [lampmap/imgmetrics.py](https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/lampmap/imgmetrics.py): all image metrics used by the scoring
+
+## Optional
+
+- [Figures](https://github.com/Bridge-coder/PipeRecon3D/tree/master/docs/images): held-out frame comparison of all methods, textured models, unwrapped wall
+- [Earlier stages](https://github.com/Bridge-coder/PipeRecon3D/tree/v2.1-results): removed LiDAR fusion branch, first Gaussian baselines, early documents (tag v2.1-results)

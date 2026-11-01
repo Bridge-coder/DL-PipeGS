@@ -256,7 +256,7 @@ flowchart TB
 | 通用 3DGS `.ply` | INRIA 布局（位置、法向、f_dc、f_rest、opacity、scale、rot），SuperSplat 等查看器可直接打开；车灯因子、环境光、每帧曝光不在 .ply 里（看到的是均匀光照下的颜色） | `pipesplat/export_ply.py` | — |
 | 带纹理网格 OBJ | 管壁高度场网格（再按模型深度径向微调 ±5 mm）；每个纹素在最清楚的几帧里按"帧 = 增益 × (车灯因子 × 反照率 + 环境光) + 偏移"做最小二乘求反照率；`texture.png` = 典型车灯 × 反照率 + 环境光 | `pipesplat/bake_vhf.py --two-light --source video` | 比高斯模型低 5–10 dB（静态贴图装不下随相机走的车灯明暗）；从管外看用它，管内画质以高斯模型为准 |
 | 管壁展开图 D2 | 训练位姿渲染模型的 0 阶颜色（不乘车灯、不加曝光），在 1 mm 网格上多视角加权烘焙 | `pipesplat/albedo_map.py`、`review/albedo_compare.py` | 15 m 管网 4 次巡检各自训练，纹理 NCC 0.62–0.73，带车灯模型的 6 对全部更高 |
-| 效果图 | 整体、三视图、剖切、展开图、留出帧对照 | `pipesplat/review/pipe_figures.py` | `scripts/pipeline.py` 的 figures 阶段 |
+| 效果图 | 整体、三视图、剖切、展开图、留出帧对照 | `pipesplat/review/pipe_figures.py` | `scripts/pipeline.py` 的 figures 阶段；例子见 [images/models_outside.jpg](images/models_outside.jpg)、[images/unwrapped_concrete_2.jpg](images/unwrapped_concrete_2.jpg) |
 | 几何 D3 | 每 5 cm 截面鲁棒圆拟合管径；圆内点再做 Fitzgibbon 直接最小二乘椭圆，椭圆度按 ASTM F1216 附录 X1；重复性按 ISO 5725 | `scripts/analysis/geometry_repeat.py` | 5 m 管 5 次独立重建：管径 309.6 ± 4.6 mm（标称 300），逐截面 s_r 8.2 mm，椭圆度 0.3–0.4 % |
 | 多次巡检联合训练 D1 | 参考巡检之外再加一次巡检的帧一起训练 | `pipesplat/export_multi.py` | 巡检之间灯光不同时有益：15 m 管网在从未用过的巡检上 +0.36 / +0.24 dB（帧数相同的对照）；同档灯光只有其 25–60 %，5 m 管（同档灯光）为 0 |
 
