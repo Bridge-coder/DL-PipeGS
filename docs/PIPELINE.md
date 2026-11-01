@@ -16,7 +16,7 @@
 | gt | Windows | 真值 → `counter.csv`；`eval_gt_scale.py` | 定位误差、推出的管径 | 1 分钟 |
 | scene | Windows | `pipesplat/export_g0.py` | `SCENE/scene.npz` | 3–5 分钟 |
 | surface | Windows + WSL | `export_surface.py`（OpenMVS 网格，总是做）；选 `vhf` 时再 `vision_surface.py`（管道先验，建在网格之上） | `surface.npz`、`surface_vhf.npz` | 1–5 分钟 |
-| train | WSL（GPU） | `pipesplat/train_gs.py` 主方法 + 评分 | `SCENE/run_main/` | 30–80 分钟 |
+| train | WSL（GPU） | `pipesplat/train_gs.py` 主方法 + 评分 | `SCENE/run_main/` | 25–65 分钟（本机 9 次主方法训练 24–63 分钟 + 评分） |
 | export | WSL | `export_ply.py`、`bake_vhf.py` | `.ply`、带纹理 OBJ | 10–20 分钟 |
 | figures | Windows | `pipesplat/review/pipe_figures.py` | 效果图 | 5 分钟 |
 

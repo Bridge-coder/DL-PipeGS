@@ -1,0 +1,21 @@
+concrete_lab/run_3dgs: max |PSNR dump - stored| = 0.00e+00 dB over 62 frames
+concrete_lab/run_3dgs_depth: max |PSNR dump - stored| = 0.00e+00 dB over 62 frames
+concrete_lab/run_3dgs_depth_lamp_amb: max |PSNR dump - stored| = 1.34e-07 dB over 62 frames
+concrete_lab: 18 block frames, chose frame 954: main - 3DGS +4.52 dB (median over the block frames +4.55); B / 3DGS / depth / main = 25.6 dB, 25.1 dB, 28.4 dB, 29.6 dB
+concrete_2/run_3dgs: max |PSNR dump - stored| = 0.00e+00 dB over 62 frames
+concrete_2/run_3dgs_depth: max |PSNR dump - stored| = 0.00e+00 dB over 62 frames
+concrete_2/run_3dgs_depth_lamp_amb: max |PSNR dump - stored| = 2.21e-07 dB over 62 frames
+concrete_2: 18 block frames, chose frame 730: main - 3DGS +5.11 dB (median over the block frames +5.49); B / 3DGS / depth / main = 30.3 dB, 30.5 dB, 34.3 dB, 35.6 dB
+inpipe_vision/run_3dgs: max |PSNR dump - stored| = 0.00e+00 dB over 76 frames
+inpipe_vision/run_u_3dgs_depth: max |PSNR dump - stored| = 0.00e+00 dB over 76 frames
+inpipe_vision/run_u_3dgs_depth_lamp_amb: max |PSNR dump - stored| = 1.30e-07 dB over 76 frames
+inpipe_vision: 32 block frames, chose frame 1620: main - 3DGS +7.37 dB (median over the block frames +7.53); B / 3DGS / depth / main = 22.6 dB, 23.8 dB, 26.2 dB, 31.1 dB
+sewer_pipe1/run_3dgs: max |PSNR dump - stored| = 0.00e+00 dB over 55 frames
+sewer_pipe1/run_u_3dgs_depth: max |PSNR dump - stored| = 0.00e+00 dB over 55 frames
+sewer_pipe1/run_u_3dgs_depth_lamp_amb: max |PSNR dump - stored| = 7.13e-08 dB over 55 frames
+sewer_pipe1: 11 block frames, chose frame 514: main - 3DGS +7.90 dB (median over the block frames +7.90); B / 3DGS / depth / main = 22.3 dB, 28.2 dB, 33.3 dB, 36.1 dB
+sewer_pipe2/run_3dgs: max |PSNR dump - stored| = 0.00e+00 dB over 64 frames
+sewer_pipe2/run_3dgs_depth: max |PSNR dump - stored| = 0.00e+00 dB over 64 frames
+sewer_pipe2/run_main: max |PSNR dump - stored| = 4.49e-07 dB over 64 frames
+sewer_pipe2: 20 block frames, chose frame 1314: main - 3DGS +14.56 dB (median over the block frames +14.66); B / 3DGS / depth / main = 22.8 dB, 19.3 dB, 32.1 dB, 33.9 dB
+compare_blocks.jpg: 2154 x 1506 px, 387 KB

@@ -12,7 +12,7 @@
 1. **前端**：标定相机内参并固定 → OpenMVG 增量式 SfM 得到每帧位姿 → OpenMVS 得到稠密点云和"实测管壁"；
 2. **模型**：在这些位姿和管壁之上训练 **3D 高斯泼溅（3DGS）**，加两个可插拔模块：
    **稠密深度监督**（让几何对）和**近场照明模型**（车灯的平方反比 + Lambert 余弦 + 平场增益图 + 环境光项 + 每帧曝光，让明暗对）；
-3. **输出**：可在任意位姿实时渲染的高斯模型（通用 3DGS `.ply`）、从管外看的带纹理网格、管壁展开图、管径 / 椭圆度沿程；
+3. **输出**：可在任意位姿渲染的高斯模型（通用 3DGS `.ply`）、从管外看的带纹理网格、管壁展开图、管径 / 椭圆度沿程；
 4. **评测**：序列内留出帧、整段拿掉的 10 cm 管段、同一管道的其他次巡检（换灯光、换速度），所有方法在同一批像素上比较。
 
 这样的模型在离开训练轨迹、换一次巡检、换一档灯光时仍能预测画面，而普通 3DGS 只在贴着训练轨迹时好。
@@ -50,7 +50,7 @@ AI 工具抓取纯文本时用 `https://raw.githubusercontent.com/Bridge-coder/P
 ### 效果图
 
 **没参加训练的画面**：每段数据一帧整段留出帧（这一帧前后 10 cm 内都没有训练帧），从左到右是视频原帧、传统网格贴图 B、3DGS、深度监督 3DGS、主方法，下方是这一帧的 PSNR。
-每段取"主方法比 3DGS 的提升最接近中位数"的那一帧，不是挑的。离开训练轨迹时，3DGS 变成一团雾，网格贴图有空洞和色块。
+每段取"主方法比 3DGS 的提升最接近中位数"的那一帧（在该段全部整段留出帧里选），不是挑的；图片就是被评分的那张，与数字出自同一次评分（来源和选帧记录见 [docs/images/SOURCES.md](docs/images/SOURCES.md)）。离开训练轨迹时，3DGS 变成一团雾，网格贴图有空洞和色块。
 
 ![五段数据的整段留出帧：视频原帧 / 传统网格贴图 / 3DGS / 深度监督 3DGS / 主方法](docs/images/compare_blocks.jpg)
 
@@ -156,7 +156,8 @@ PipeRecon3D/
 │  ├─ export_ply.py bake_vhf.py meshraster.py albedo_map.py   .ply、带纹理网格、网格光栅化、展开图
 │  ├─ env.sh, setup/                 WSL 路径；环境安装脚本（系统包、CUDA 12.8、Python 环境、编译 gsplat）
 │  └─ review/                        评测与作图：paired_stats.py seeds_table.py table_x5.py score_xrun.py albedo_compare.py
-│                                    gain_spread.py dump_frames.py compare_video.py pipe_figures.py queue.sh export_lab.ps1
+│                                    gain_spread.py dump_frames.py compare_video.py pipe_figures.py queue.sh export_lab.ps1；
+│                                    fig_compare_blocks.py fig_models_outside.py（README 的图）
 └─ docs/
    ├─ MODEL.md                       模型说明：结构、公式、超参数、每个模块的作用和证据、代码地图
    ├─ PIPELINE.md                    全流程运行：环境、新视频的每一步、Pipe2 端到端记录、复现四段实验数据、多次巡检评测

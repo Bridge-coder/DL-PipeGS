@@ -17,7 +17,7 @@
 | | 内容 |
 |---|---|
 | 输入 | 一段管道视频；相机内参（棋盘格标定，或"等径直管 + 一段已知行程"标定）；可选：画面计数器 / 里程真值、管径 |
-| 输出 | 高斯模型 `model.pt`（任意位姿实时渲染）和通用 3DGS `.ply`；带纹理网格 OBJ（从管外看）；管壁展开图；管径 / 椭圆度沿程；每帧评分 |
+| 输出 | 高斯模型 `model.pt`（任意位姿渲染）和通用 3DGS `.ply`；带纹理网格 OBJ（从管外看）；管壁展开图；管径 / 椭圆度沿程；每帧评分 |
 | 代码 | 前端 `scripts/vision/`（Windows）；高斯部分 `pipesplat/`（WSL + CUDA）；一条命令跑完：`scripts/pipeline.py` |
 | 主方法的训练命令 | `train_gs.py SCENE OUT --baseline 3dgs --baseline-depth 1.0 --lamp --lamp-smooth-mm 20 --lamp-ambient` |
 
@@ -120,7 +120,7 @@ flowchart TB
 | 密度控制 | gsplat DefaultStrategy（克隆、分裂、剪枝），第 15 000 次迭代后停止；球谐阶数每 1000 次迭代升一阶，到 3 阶 | `strategy` |
 | 留出 | 两段 10 cm 的整段留出帧不参加训练（`block_idx`） | `train` |
 | 数值保护 | 非有限的损失跳过这一步，非有限的梯度置零，并计数写进日志 | 训练循环 |
-| 资源 | RTX 5060 Ti（8 GB）上每个模型 30–80 分钟，显存峰值 ≤ 约 4.5 GB；稠密点 > 2.5 M 时用 `--points-every 2` | — |
+| 资源 | RTX 5060 Ti（8 GB）上实测（`summary_r2.json` 的 `train_minutes`、`peak_GB`，3 万次迭代，不含载入和评分的几分钟）：主方法 24–63 分钟、显存峰值 2.8–5.6 GB（9 次训练）；3DGS 10–20 分钟；深度监督 3DGS 21–32 分钟；稠密点 > 2.5 M 时用 `--points-every 2` | — |
 
 **只用主体框架会怎样**（3 个种子，PSNR dB；四组测试的定义见 [EVALUATION.md](EVALUATION.md)）：
 
@@ -134,7 +134,7 @@ flowchart TB
 渲染深度错 21–27 %（15 m）、44–59 %（5 m）、InPipe 12 / 26 %、Pipe1 85 / 67 %（管内浮着一层"雾"）。
 贴着训练轨迹时画面很好，一离开轨迹就崩：相机只沿管轴前进，新视角只在训练轨迹附近受约束。
 
-**为什么用 3DGS 作主体**：高斯是显式的点，能直接从 MVS 点初始化、直接加深度监督和成像模型；训练 30–80 分钟、实时渲染；最常用的基线。
+**为什么用 3DGS 作主体**：高斯是显式的点，能直接从 MVS 点初始化、直接加深度监督和成像模型；主方法训练 24–63 分钟（本机）；3DGS 本身是为实时渲染设计的（Kerbl 等 2023），本项目没有专门测渲染速度；最常用的基线。
 插件与表示方式无关：锚定面元与 3DGS 只差约 0.1 dB，深度监督 2DGS 与深度监督 3DGS 同一水平，所以换主体框架不改变结论。
 
 ---
@@ -257,7 +257,7 @@ flowchart TB
 | 带纹理网格 OBJ | 管壁高度场网格（再按模型深度径向微调 ±5 mm）；每个纹素在最清楚的几帧里按"帧 = 增益 × (车灯因子 × 反照率 + 环境光) + 偏移"做最小二乘求反照率；`texture.png` = 典型车灯 × 反照率 + 环境光 | `pipesplat/bake_vhf.py --two-light --source video` | 比高斯模型低 5–10 dB（静态贴图装不下随相机走的车灯明暗）；从管外看用它，管内画质以高斯模型为准 |
 | 管壁展开图 D2 | 训练位姿渲染模型的 0 阶颜色（不乘车灯、不加曝光），在 1 mm 网格上多视角加权烘焙 | `pipesplat/albedo_map.py`、`review/albedo_compare.py` | 15 m 管网 4 次巡检各自训练，纹理 NCC 0.62–0.73，带车灯模型的 6 对全部更高 |
 | 效果图 | 整体、三视图、剖切、展开图、留出帧对照 | `pipesplat/review/pipe_figures.py` | `scripts/pipeline.py` 的 figures 阶段；例子见 [images/models_outside.jpg](images/models_outside.jpg)、[images/unwrapped_concrete_2.jpg](images/unwrapped_concrete_2.jpg) |
-| 几何 D3 | 每 5 cm 截面鲁棒圆拟合管径；圆内点再做 Fitzgibbon 直接最小二乘椭圆，椭圆度按 ASTM F1216 附录 X1；重复性按 ISO 5725 | `scripts/analysis/geometry_repeat.py` | 5 m 管 5 次独立重建：管径 309.6 ± 4.6 mm（标称 300），逐截面 s_r 8.2 mm，椭圆度 0.3–0.4 % |
+| 几何 D3 | 每 5 cm 截面鲁棒圆拟合管径；圆内点再做 Fitzgibbon 直接最小二乘椭圆，椭圆度按 ASTM F1216 附录 X1；重复性按 ISO 5725 | `scripts/analysis/geometry_repeat.py` | 5 m 管 5 次独立重建：各次管径中位数 305–315 mm（均值 309.6、标准差 4.6 mm；标称 300），逐截面 s_r 8.2 mm，椭圆度中位 0.32–0.41 % |
 | 多次巡检联合训练 D1 | 参考巡检之外再加一次巡检的帧一起训练 | `pipesplat/export_multi.py` | 巡检之间灯光不同时有益：15 m 管网在从未用过的巡检上 +0.36 / +0.24 dB（帧数相同的对照）；同档灯光只有其 25–60 %，5 m 管（同档灯光）为 0 |
 
 ---
