@@ -32,7 +32,7 @@
 ### 1.1 Windows 侧
 
 ```bash
-git clone https://github.com/Bridge-coder/PipeRecon3D.git
+git clone https://github.com/Bridge-coder/DL-PipeGS.git PipeRecon3D   # 本文的路径都按 PipeRecon3D 这个文件夹名写
 cd PipeRecon3D
 pip install -r requirements.txt            # Python 3.13：numpy、opencv-python、matplotlib、pillow
 python tools/install_third_party.py        # OpenMVG 1.6 + OpenMVS 2.4.0（官方发布页，校验 SHA-256，解压到 third_party/）
@@ -247,8 +247,8 @@ python -I scripts/pipeline.py sewer_pipe2 D:/pipe3d_e2e/data/Pipe2.avi --camera-
 **下载**（GitHub Releases + 原始视频）：
 
 ```bash
-gh release download v1.0-results --repo Bridge-coder/PipeRecon3D --dir D:/dl/v1.0 -p sheffield_concrete_2.zip -p concrete_lab.zip -p sewer_pipe1.zip
-gh release download v2.0-results --repo Bridge-coder/PipeRecon3D --dir D:/dl/v2.0 -p "*_intermediates.zip" -p inpipe_172011_scene.zip -p lamp_maps.zip
+gh release download v1.0-results --repo Bridge-coder/DL-PipeGS --dir D:/dl/v1.0 -p sheffield_concrete_2.zip -p concrete_lab.zip -p sewer_pipe1.zip
+gh release download v2.0-results --repo Bridge-coder/DL-PipeGS --dir D:/dl/v2.0 -p "*_intermediates.zip" -p inpipe_172011_scene.zip -p lamp_maps.zip
 python -I scripts/download_data.py sheffield-concrete5m D:/data/concrete5m 300mm_concrete_5meters_ON_2lm_2u_CLOSED_2.mp4
 python -I scripts/download_data.py sheffield-mix15m D:/data/mix15m 300mm_mix_15meters_ON_3lm_3u_CLOSED_1_stop_at_14meters.mp4
 python -I scripts/download_data.py sheffield-sewer D:/data/sewer Pipe1.avi

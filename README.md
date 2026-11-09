@@ -26,8 +26,8 @@
 5. 需要运行时：[docs/PIPELINE.md](docs/PIPELINE.md)（环境、新视频的每一步、Pipe2 实例）、[docs/DATA.md](docs/DATA.md)（数据集、目录、文件格式）；
 6. 代码：`pipesplat/train_gs.py`（模型本体，开头的说明列出全部选项）、`scripts/pipeline.py`（整条流程）。
 
-AI 工具抓取纯文本时用 `https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/<路径>`，例如
-`https://raw.githubusercontent.com/Bridge-coder/PipeRecon3D/master/docs/MODEL.md`；仓库根目录的 [`llms.txt`](llms.txt) 是同一份索引的英文版。
+AI 工具抓取纯文本时用 `https://raw.githubusercontent.com/Bridge-coder/DL-PipeGS/master/<路径>`，例如
+`https://raw.githubusercontent.com/Bridge-coder/DL-PipeGS/master/docs/MODEL.md`；仓库根目录的 [`llms.txt`](llms.txt) 是同一份索引的英文版。
 
 ---
 
@@ -175,7 +175,7 @@ PipeRecon3D/
 
 | 删除的部分 | 为什么淘汰 | 在哪找 |
 |---|---|---|
-| 激光雷达 + 视觉融合（InPipe 的 F1–F5、高度场最终模型 R1–R5，`scripts/lidar|fusion|recon`） | 激光管壁半径小 13–15 %，与图像有毫米级错位；改用视觉位姿 + 视觉几何后更好 | 标签 [`v2.1-results`](https://github.com/Bridge-coder/PipeRecon3D/tree/v2.1-results) |
+| 激光雷达 + 视觉融合（InPipe 的 F1–F5、高度场最终模型 R1–R5，`scripts/lidar|fusion|recon`） | 激光管壁半径小 13–15 %，与图像有毫米级错位；改用视觉位姿 + 视觉几何后更好 | 标签 [`v2.1-results`](https://github.com/Bridge-coder/DL-PipeGS/tree/v2.1-results) |
 | Gaussian-LIC2 式基线 G0、纹理模型 TX、早期诊断脚本、学习位姿修正 / 3DGUT / 不透明面元 / 3DGS-MCMC 等训练选项 | 被锚定面元、再被"深度监督 3DGS + 近场照明"取代，或没有改善 | 同上 |
 | docs/01–13（流程复盘、新视频测试、COLMAP 对比、改进方案、复盘、质量提升、恢复指南） | 记录的是早期阶段；结论已汇总进 docs/MODEL.md、EVALUATION.md | 同上（代码注释里提到的 docs/01–13 都指这里） |
 | `results/`（v1.0 的评估图表） | 同上 | 同上；大文件在 Releases `v1.0-results`、`v2.0-results`、`v2.1-results` |
