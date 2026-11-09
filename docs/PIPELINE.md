@@ -63,7 +63,12 @@ python scripts/paths.py                    # 检查每个路径
    ```
 
    得到 `/opt/gsenv`（Python 3.12、torch 2.9.1 + CUDA 12.8、gsplat 1.6.0 固定在 commit `512d366`、fused-ssim、lpips、scipy）。
-   **换了显卡**：`03_build_gsplat.sh` 里的 `TORCH_CUDA_ARCH_LIST="12.0"` 只适用于 RTX 50 系列，按你的显卡改（RTX 40 系列 `8.9`，RTX 30 系列 `8.6`）。
+   `03_build_gsplat.sh` 只为本机显卡编译（架构取自 nvidia-smi 报的计算能力：RTX 50 系列 12.0、40 系列 8.9、30 系列 8.6），
+   一次编一个文件（约 1.5 小时）：有 3 个文件编译时每个要好几 GB 内存（最多约 7 GB），并行编会把 8 GB 的 WSL 内存用光。
+   **换了显卡**：重跑 `03_build_gsplat.sh`，它会先卸掉旧的编译结果。
+   改这两个默认值要进 WSL（`wsl -d pipe3d -u root`）带着变量运行，Windows 里设的环境变量默认传不进 WSL：
+   WSL 内存 16 GB 以上可用 `MAX_JOBS=2 bash /mnt/<…>/pipesplat/setup/03_build_gsplat.sh` 两个一起编；
+   要同时支持几种显卡，用 `TORCH_CUDA_ARCH_LIST="8.9;12.0" bash /mnt/<…>/pipesplat/setup/03_build_gsplat.sh`。
 4. 检查：`wsl -d pipe3d -u root -- /opt/gsenv/bin/python /mnt/<…>/pipesplat/setup/check_gsplat.py`。
 5. LPIPS 的 AlexNet 权重第一次评分时自动下载到 `TORCH_CACHE`（需要联网一次）。
 
